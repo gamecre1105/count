@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>累計結果アプリ（継続＆ぶどう確率）</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f8f8ff;
+    margin: 40px;
+  }
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+  .main {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+  }
+  .container {
+    width: 420px;
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+  }
+  .side {
+    width: 220px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    text-align: center;
+  }
+  label {
+    display: block;
+    margin-top: 12px;
+  }
+  input {
+    width: 100%;
+    padding: 8px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 10px;
+    font-size: 1em;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #357ac9;
+  }
+  .result {
+    margin-top: 20px;
+    background: #f0f0f0;
+    padding: 15px;
+    border-radius: 10px;
+  }
+  pre {
+    background: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+  }
+  #continueBtn {
+    background: #a44ae2;
+    font-weight: bold;
+  }
+  #continueBtn:hover {
+    background: #8b38c7;
+  }
+  .count {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #6c2db7;
+    margin-top: 15px;
+  }
+  .reset {
+    background: #ff6b6b;
+    margin-top: 10px;
+  }
+  .grape {
+    margin-top: 25px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+  }
+</style>
+</head>
+<body>
+  <h1>累計結果アプリ（継続＆ぶどう確率）</h1>
+
+  <div class="main">
+    <!-- 左：累計計算エリア -->
+    <div class="container">
+      <label>今回の G:</label>
+      <input type="number" id="g" placeholder="例: 1200">
+      <label>今回の BIG:</label>
+      <input type="number" id="big" placeholder="例: 6">
+      <label>今回の REG:</label>
+      <input type="number" id="reg" placeholder="例: 4">
+
+      <button onclick="addData()">追加して計算</button>
+
+      <div class="result" id="output"></div>
+      <button class="reset" onclick="resetData()">リセット</button>
+    </div>
+
+    <!-- 右：継続ボタン＋ぶどう確率 -->
+    <div class="side">
+      <h3>継続カウンター</h3>
+      <button id="continueBtn" onclick="addContinue()">継続 +</button>
+      <div class="count" id="continueCount">0</div>
+      <button class="reset" onclick="resetContinue()">リセット</button>
+
+      <div class="grape">
+        <h3>ぶどう確率</h3>
+        <label>今回のG数:</label>
+        <input type="number" id="grapeG" placeholder="例: 1000">
+        <label>今回のぶどう数:</label>
+        <input type="number" id="grapeCount" placeholder="例: 10">
+        <button style="background:#28a745;" onclick="addGrape()">追加して更新</button>
+        <div class="count" id="grapeRate">--</div>
+        <button class="reset" onclick="resetGrape()">リセット</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== G/BIG/REG 計算部分 =====
+function loadData() {
+  return JSON.parse(localStorage.getItem("records")) || [];
+}
+function saveData(data) {
+  localStorage.setItem("records", JSON.stringify(data));
+}
+function addData() {
+  const g = parseInt(document.getElementById("g").value) || 0;
+  const big = parseInt(document.getElementById("big").value) || 0;
+  const reg = parseInt(document.getElementById("reg").value) || 0;
+  const data = loadData();
+  data.push({ g, big, reg });
+  saveData(data);
+
+  let total_g = 0, total_BIG = 0, total_REG = 0;
+  data.forEach(d => {
+    total_g += d.g;
+    total_BIG += d.big;
+    total_REG += d.reg;
+  });
+
+  const g_per_BIG = total_BIG > 0 ? (total_g / total_BIG).toFixed(2) : "---";
+  const g_per_REG = total_REG > 0 ? (total_g / total_REG).toFixed(2) : "---";
+
+  document.getElementById("output").innerHTML = `
+    <h3>=== 累計結果 ===</h3>
+    <pre>
+総G数: ${total_g}
+総BIG: ${total_BIG}
+総REG: ${total_REG}
+    </pre>
+    <h3>=== 計算結果 ===</h3>
+    <pre>
+G / BIG = ${g_per_BIG}
+G / REG = ${g_per_REG}
+    </pre>
+  `;
+
+  document.getElementById("g").value = "";
+  document.getElementById("big").value = "";
+  document.getElementById("reg").value = "";
+}
+function resetData() {
+  if (confirm("データをリセットしますか？")) {
+    localStorage.removeItem("records");
+    document.getElementById("output").innerHTML = "";
+  }
+}
+
+// ===== 継続カウンター =====
+let cont = parseInt(localStorage.getItem("continueCount")) || 0;
+document.getElementById("continueCount").textContent = cont;
+function addContinue() {
+  cont++;
+  localStorage.setItem("continueCount", cont);
+  document.getElementById("continueCount").textContent = cont;
+}
+function resetContinue() {
+  if (confirm("継続カウンターをリセットしますか？")) {
+    cont = 0;
+    localStorage.setItem("continueCount", cont);
+    document.getElementById("continueCount").textContent = cont;
+  }
+}
+
+// ===== ぶどう確率（累計） =====
+let grapeData = JSON.parse(localStorage.getItem("grapeRecords")) || [];
+
+function addGrape() {
+  const g = parseInt(document.getElementById("grapeG").value) || 0;
+  const count = parseInt(document.getElementById("grapeCount").value) || 0;
+
+  grapeData.push({ g, count });
+  localStorage.setItem("grapeRecords", JSON.stringify(grapeData));
+
+  updateGrapeDisplay();
+
+  document.getElementById("grapeG").value = "";
+  document.getElementById("grapeCount").value = "";
+}
+
+function updateGrapeDisplay() {
+  let totalG = 0, totalCount = 0;
+  grapeData.forEach(d => {
+    totalG += d.g;
+    totalCount += d.count;
+  });
+
+  let rate = (totalCount > 0) ? (totalG / totalCount).toFixed(2) : "---";
+  document.getElementById("grapeRate").textContent = rate;
+}
+
+function resetGrape() {
+  if (confirm("ぶどうデータをリセットしますか？")) {
+    grapeData = [];
+    localStorage.removeItem("grapeRecords");
+    updateGrapeDisplay();
+  }
+}
+
+updateGrapeDisplay();
+</script>
+</body>
+</html>
