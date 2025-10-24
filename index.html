@@ -17,7 +17,6 @@
     margin-bottom: 25px;
   }
 
-  /* 横並び（PC） */
   .main {
     display: flex;
     justify-content: center;
@@ -26,7 +25,6 @@
     flex-wrap: wrap;
   }
 
-  /* 共通カードデザイン */
   .container, .side {
     background: #fff;
     padding: 20px;
@@ -66,15 +64,36 @@
   }
 
   .btn-blue { background: #4a90e2; color: white; }
-  .btn-purple { background: #a44ae2; color: white; }
   .btn-green { background: #28a745; color: white; }
   .btn-red { background: #ff6b6b; color: white; margin-top: 10px; }
+
+  /* 🌟 丸型 継続ボタン */
+  .btn-circle {
+    background: #a44ae2;
+    color: #fff;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1.1;
+    margin: 15px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.25s;
+    box-shadow: 0 4px 10px rgba(164,74,226,0.4);
+  }
+  .btn-circle:hover {
+    background: #8b38c7;
+    transform: scale(1.08);
+  }
 
   .count {
     font-size: 1.8em;
     font-weight: bold;
     color: #6c2db7;
-    margin-top: 15px;
+    margin-top: 10px;
   }
 
   .result {
@@ -98,7 +117,7 @@
     border-top: 1px solid #ccc;
   }
 
-  /* --- スマホ対応（768px以下） --- */
+  /* スマホ対応 */
   @media (max-width: 768px) {
     body {
       margin: 10px;
@@ -119,6 +138,11 @@
     button {
       font-size: 1.1em;
       padding: 10px;
+    }
+    .btn-circle {
+      width: 80px;
+      height: 80px;
+      font-size: 1.1em;
     }
     input {
       font-size: 1em;
@@ -151,7 +175,7 @@
     <!-- 右：継続ボタン＋ぶどう確率 -->
     <div class="side">
       <h3>継続カウンター</h3>
-      <button class="btn-purple" onclick="addContinue()">継続 +</button>
+      <button class="btn-circle" onclick="addContinue()">継続＋</button>
       <div class="count" id="continueCount">0</div>
       <button class="btn-red" onclick="resetContinue()">リセット</button>
 
