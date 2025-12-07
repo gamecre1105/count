@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>累計結果アプリ（継続＆ぶどう確率）</title>
+<title>カウントアプリ</title>
 <style>
   body {
     font-family: "Segoe UI", sans-serif;
@@ -67,30 +67,29 @@
   .btn-green { background: #28a745; color: white; }
   .btn-red { background: #ff6b6b; color: white; margin-top: 10px; }
 
- 
- /* 🌟 丸型 継続ボタン（押しやすく、拡大しない） */
-.btn-circle {
-  background: #a44ae2;
-  color: #fff;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  font-size: 1.2em;
-  font-weight: bold;
-  line-height: 1.1;
-  margin: 15px auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s, transform 0.1s;
-  box-shadow: 0 4px 10px rgba(164,74,226,0.4);
-}
-.btn-circle:hover {
-  background: #8b38c7;
-}
-.btn-circle:active {
-  transform: scale(0.95);
-}
+  /* 🌟 丸型 継続ボタン（押しやすく、拡大しない） */
+  .btn-circle {
+    background: #a44ae2;
+    color: #fff;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1.1;
+    margin: 15px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 4px 10px rgba(164,74,226,0.4);
+  }
+  .btn-circle:hover {
+    background: #8b38c7;
+  }
+  .btn-circle:active {
+    transform: scale(0.95);
+  }
 
   .count {
     font-size: 1.8em;
@@ -158,7 +157,7 @@
 </style>
 </head>
 <body>
-  <h1>累計結果アプリ（継続＆ぶどう確率）</h1>
+  <h1>カウントアプリ</h1>
 
   <div class="main">
     <!-- 左：累計計算エリア -->
@@ -175,22 +174,41 @@
       <button class="btn-red" onclick="resetData()">リセット</button>
     </div>
 
-    <!-- 右：継続ボタン＋ぶどう確率 -->
+    <!-- 右：継続ボタン＋小物確率＋ぶどう逆算 -->
     <div class="side">
       <h3>継続カウンター</h3>
       <button class="btn-circle" onclick="addContinue()">継続＋</button>
       <div class="count" id="continueCount">0</div>
       <button class="btn-red" onclick="resetContinue()">リセット</button>
 
+      <!-- 小物確率（ぶどうカウント） -->
       <div class="grape">
-        <h3>ぶどう確率</h3>
-        <label>今回のG数:</label>
+        <h3>小物確率</h3>
+        <label>G数:</label>
         <input type="number" id="grapeG" placeholder="例: 1000">
-        <label>今回のぶどう数:</label>
+        <label>小物:</label>
         <input type="number" id="grapeCount" placeholder="例: 10">
         <button class="btn-green" onclick="addGrape()">追加して更新</button>
         <div class="count" id="grapeRate">--</div>
         <button class="btn-red" onclick="resetGrape()">リセット</button>
+      </div>
+
+      <!-- ★ ぶどう逆算ツール（差枚・G数・出率・BIG・REG から計算） -->
+      <div class="grape">
+        <h3>ぶどう逆算ツール</h3>
+        <label>差枚（枚）※空欄なら出率から計算</label>
+        <input type="number" id="bdDiff" placeholder="例: -298">
+        <label>総 G 数</label>
+        <input type="number" id="bdG" placeholder="例: 6643">
+        <label>出率（%）※任意</label>
+        <input type="number" id="bdRate" placeholder="例: 98.5" step="0.1">
+        <label>BIG 回数</label>
+        <input type="number" id="bdBig" placeholder="例: 26">
+        <label>REG 回数</label>
+        <input type="number" id="bdReg" placeholder="例: 15">
+
+        <button class="btn-green" onclick="calcBudo()">ぶどうを逆算</button>
+        <div class="result" id="bdResult"></div>
       </div>
     </div>
   </div>
@@ -262,7 +280,7 @@ function resetContinue() {
   }
 }
 
-// ===== ぶどう確率（累計） =====
+// ===== ぶどう確率（累計カウント） =====
 let grapeData = JSON.parse(localStorage.getItem("grapeRecords")) || [];
 
 function addGrape() {
@@ -298,6 +316,114 @@ function resetGrape() {
 }
 
 updateGrapeDisplay();
+
+// ===== ぶどう逆算（差枚・G数・出率・BIG・REG） =====
+
+// 定数（6号機 Sアイム想定）
+const COIN_IN_PER_GAME = 3;    // 1Gあたり 3 枚投入
+const BIG_PAYOUT        = 252; // BIG 平均枚数
+const REG_PAYOUT        = 96;  // REG 平均枚数
+
+// 小役（適当打ち時の理論値）
+const REPLAY_PROB    = 1 / 7.298;
+const REPLAY_PAYOUT  = 3;
+
+const CHERRY_PROB    = 1 / 53.43;
+const CHERRY_PAYOUT  = 2;
+
+const BELL_PROB      = 1 / 4915.20;
+const BELL_PAYOUT    = 14;
+
+const PIERROT_PROB   = 1 / 10865.18;
+const PIERROT_PAYOUT = 10;
+
+const GRAPE_PAYOUT   = 8;  // ぶどう 8 枚役
+
+function calcBudo() {
+  const gEl       = document.getElementById("bdG");
+  const diffEl    = document.getElementById("bdDiff");
+  const rateEl    = document.getElementById("bdRate");
+  const bigEl     = document.getElementById("bdBig");
+  const regEl     = document.getElementById("bdReg");
+  const resultEl  = document.getElementById("bdResult");
+
+  const spins = Number(gEl.value);
+  const bb    = Number(bigEl.value);
+  const rb    = Number(regEl.value);
+
+  if (!Number.isFinite(spins) || spins <= 0 ||
+      !Number.isFinite(bb)    || bb < 0     ||
+      !Number.isFinite(rb)    || rb < 0) {
+    resultEl.textContent = "総G数・BIG・REG を正しく入力してください。";
+    return;
+  }
+
+  const totalIn = spins * COIN_IN_PER_GAME;
+
+  // 差枚 or 出率
+  const diffStr = diffEl.value.trim();
+  const rateStr = rateEl.value.trim();
+
+  let diff;
+  if (diffStr !== "") {
+    diff = Number(diffStr);
+    if (!Number.isFinite(diff)) {
+      resultEl.textContent = "差枚は数値で入力してください。";
+      return;
+    }
+  } else if (rateStr !== "") {
+    const rate = Number(rateStr);
+    if (!Number.isFinite(rate)) {
+      resultEl.textContent = "出率は数値で入力してください。";
+      return;
+    }
+    // 差枚 = 投入枚数 × (出率/100 - 1)
+    diff = totalIn * (rate / 100 - 1);
+  } else {
+    resultEl.textContent = "差枚か出率のどちらかは入力してください。";
+    return;
+  }
+
+  // 総払い出し枚数
+  const totalOut = totalIn + diff;
+
+  // ボーナス払い出し
+  const bonusOut = bb * BIG_PAYOUT + rb * REG_PAYOUT;
+
+  // 小役（全部）の払い出し
+  const smallOutTotal = totalOut - bonusOut;
+
+  // ぶどう以外の小役払い出し（理論値）
+  const otherSmallOut =
+    spins * (
+      REPLAY_PROB   * REPLAY_PAYOUT +
+      CHERRY_PROB   * CHERRY_PAYOUT +
+      BELL_PROB     * BELL_PAYOUT   +
+      PIERROT_PROB  * PIERROT_PAYOUT
+    );
+
+  // ぶどう払い出し枚数
+  const grapeOut = smallOutTotal - otherSmallOut;
+
+  if (grapeOut <= 0) {
+    resultEl.textContent = "計算上、ぶどう払い出しが 0 枚以下になりました。入力値を確認してください。";
+    return;
+  }
+
+  const grapeHits = grapeOut / GRAPE_PAYOUT;
+  if (grapeHits <= 0) {
+    resultEl.textContent = "計算上、ぶどう回数が 0 回以下になりました。";
+    return;
+  }
+
+  const grapeProb = spins / grapeHits;           // 1/◯ の ◯
+  const payout    = (totalOut / totalIn) * 100;  // 実質出率（参考）
+
+  resultEl.innerHTML =
+    `推定ぶどう回数：<strong>${grapeHits.toFixed(1)}</strong> 回<br>` +
+    `推定ぶどう確率：<strong>1/${grapeProb.toFixed(2)}</strong>（約 ${grapeProb.toFixed(2)} 分の1）<br>` +
+    `計算上の出率：${payout.toFixed(2)}%`;
+}
 </script>
 </body>
 </html>
